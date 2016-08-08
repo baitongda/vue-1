@@ -9,12 +9,17 @@ config.entry.unshift(
 );
 config.plugins.push(new webpack.HotModuleReplacementPlugin());
 
-// 这里配置：请求http://localhost:9090/api，
-// 相当于通过本地node服务代理请求到了http://cnodejs.org/api
+// 这里配置：请求http://localhost:9090/user
+// 相当于通过本地node服务代理请求到了http://120.25.218.156:19000/user
 var proxy = [{
         path: "/api/*",
-        target: "https://cnodejs.org",
-        host: "cnodejs.org"
+        target: "http://120.25.218.156:19000",
+        host: "120.25.218.156:19000",
+        secure: false,
+        bypass: function(req, res, proxyOptions) {
+            req.url = req.url.replace(/^\/api/, '');
+            console.log(req.url);
+        }
     }]
     //启动服务
 var app = new WebpackDevServer(webpack(config), {

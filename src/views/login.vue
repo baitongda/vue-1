@@ -3,12 +3,13 @@
     </nv-head>
     <section class="page-body">
         <div class="label">
-            <input class="txt" type="text" placeholder="Access Token" v-model="token" maxlength="36">
+            <input class="txt" type="text" placeholder="账号：" v-model="uname" maxlength="32" minlength="4">
         </div>
         <div class="label">
-            <a class="button">选择二维码图片</a>
-            <input class="file" type="file" id="file_upload" @change="readPic"
-                accept="image/*" capture="camera"/>
+            <input class="txt" type="text" placeholder="密码：" v-model="pw" maxlength="32" minlength="4">
+        </div>
+        <div class="label">
+            <a class="button" @click="cancle">取消</a>
             <a class="button" @click="logon">登录</a>
         </div>
     </section>
@@ -17,7 +18,7 @@
 </template>
 
 <script>
-    import {qrcode}  from '../libs/llqrcode'
+    import url from '../url.js'
 
     let browser = {
         versions: function() {
@@ -35,7 +36,8 @@
         data () {
             let self = this;
             return {
-                token: '',
+                uname:'',//账号
+                pw:'',//密码
                 /*弱提示*/
                 alert: {
                     txt: '',
@@ -50,32 +52,44 @@
                 },
                 loading:{
                     show:false,
-                    showTxt:'二维码识别中'
+                    showTxt:'登陆中'
                 }
             }
         },
         methods: {
             logon (){
                 let self = this;
-                if(self.token == ''){
-                    let text = "令牌格式错误,应为36位UUID字符串";
-                    self.alert.txt = text;
+
+                function errFn(errText) {
+                    self.alert.txt = errText;
                     self.alert.show = true;
                     self.alert.hideFn();
                     return false;
                 }
+                if (self.uname == '') {
+                    let text = '请输入账号';
+                    return errFn(text);
+                }else if (self.pw == '') {
+                    let text = '请输入密码';
+                    return errFn(text);
+                }
                 $.ajax({
                     type:'POST',
-                    url:'https://cnodejs.org/api/v1/accesstoken',
-                    data:{accesstoken:self.token},
+                    url: url.url.signin,
+                    data:{
+                        uname: self.uname,
+                        upasswd: self.pw
+                    },
                     dataType: 'json',
                     success:function(res){
-                        localStorage.loginname = res.loginname;
-                        localStorage.avatar_url = res.avatar_url;
-                        localStorage.userId = res.id;
-                        localStorage.token = self.token;
-                        let redirect = decodeURIComponent(self.$route.query.redirect || '/');
-                        self.$route.router.go(redirect);
+                        // if (res.ok) {
+                            // 保存sessionid和用户名
+                            localStorage.sessionid = res.sessionid;
+                            localStorage.uname = res.uname;
+                            // 跳到列表页
+                            let redirect = decodeURIComponent(self.$route.query.redirect || '/');
+                            self.$route.router.go(redirect);
+                        // }
                     },
                     error:function(res){
                         var error = JSON.parse(res.responseText);
@@ -86,44 +100,7 @@
                     }
                 })
             },
-            readPic (e){
-                let self = this;
-                let file = e.currentTarget.files[0];//  this is my image
-                let reader = new FileReader();
-
-                reader.onload = function (e) {
-                    let dataURL = reader.result;
-
-                    let base64 = dataURL.split('base64,');
-                    let param = { "img": base64[1] };
-
-                    self.loading.show = true;
-                    if (browser.versions.iPhone || browser.versions.iPad || browser.versions.ios) {
-                        $.post('http://m.yueqingwang.com/common.ashx', param, function (d) {
-                            self.loading.show = false;
-                            if(d == "qrcode error"){
-                                self.token = "";
-                                let text = "二维码图片不清晰";
-                                self.alert.txt = text;
-                                self.alert.show = true;
-                                self.alert.hideFn();
-                                return false;
-                            }
-                            else{
-                                self.token = d;
-                            }
-                        });
-                    }
-                    else{
-                        qrcode.decode(dataURL);
-                        qrcode.callback = function (data) {
-                            self.loading.show = false;
-                            self.token = data;
-                        }
-                    }
-                }
-                reader.readAsDataURL(file);
-            },
+            cancle(){}
         },
         components:{
             "nvHead":require('../components/header.vue'),
